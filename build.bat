@@ -29,7 +29,7 @@ if exist "build" rmdir /s /q "build"
 
 echo.
 echo [3/3] 使用PyInstaller打包为独立exe...
-pyinstaller --onefile --windowed --name "系统信息采集工具" ^
+pyinstaller --noconfirm --onefile --windowed --name "系统信息采集工具" ^
     --hidden-import psutil ^
     --hidden-import psutil._common ^
     --hidden-import psutil._pswindows ^
@@ -46,7 +46,6 @@ pyinstaller --onefile --windowed --name "系统信息采集工具" ^
     --hidden-import email.encoders ^
     --hidden-import urllib.request ^
     --hidden-import xml.etree.ElementTree ^
-    --collect-all openpyxl ^
     system_info_app.py
 
 if %errorlevel% equ 0 (

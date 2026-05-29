@@ -464,22 +464,43 @@ def get_network_speed():
     return info
 
 def _http_speed_test_multi():
-    """Multi-threaded HTTP speed test for better accuracy."""
+    """Multi-threaded HTTP speed test optimized for Chinese networks.
+
+    Priority: domestic CDN endpoints → Cloudflare (global fallback).
+    """
     from concurrent.futures import ThreadPoolExecutor, as_completed
 
     info = {}
-    # CDN endpoints for parallel download testing
-    # Cloudflare supports Range requests (good for multi-threading)
-    test_configs = [
+
+    # ── Tier-1: Domestic Chinese CDN endpoints (fastest for mainland users) ──
+    # These are large enough to measure real throughput and support Range requests
+    domestic_configs = [
+        # China Telecom Shanghai speed test
+        ("http://speedtest1.online.sh.cn:8080/download/?size=25000000",
+         "中国电信上海", False),
+        # Tsinghua University mirror (10 MB test file)
+        ("https://mirrors.tuna.tsinghua.edu.cn/ubuntu-releases/24.04/ubuntu-24.04-desktop-amd64.iso.zsync",
+         "清华TUNA镜像站", False),
+        # Alibaba Cloud OSS public test file
+        ("https://alibaba.github.io/arthas/arthas-boot.jar",
+         "阿里云OSS", False),
+    ]
+
+    # ── Tier-2: Cloudflare global CDN (supports Range, good multi-threading) ──
+    cloudflare_configs = [
         ("https://speed.cloudflare.com/__down?bytes=25000000", "Cloudflare", True),
     ]
 
     best_dl = 0
-    for url, name, use_threads in test_configs:
+    best_name = ""
+
+    # Try domestic endpoints first, then Cloudflare
+    all_configs = domestic_configs + cloudflare_configs
+
+    for url, name, use_threads in all_configs:
         try:
             if use_threads:
-                threads = 3
-                chunk_size = 5 * 1024 * 1024  # 5 MB per thread
+                threads = 4
                 log(f"  通过{name}多线程({threads}路)下载测试...")
 
                 def download_chunk(url, timeout_val):
@@ -498,10 +519,10 @@ def _http_speed_test_multi():
                 start = time.time()
                 total_bytes = 0
                 with ThreadPoolExecutor(max_workers=threads) as executor:
-                    futures = [executor.submit(download_chunk, url, 20) for _ in range(threads)]
+                    futures = [executor.submit(download_chunk, url, 15) for _ in range(threads)]
                     for f in as_completed(futures):
                         try:
-                            total_bytes += f.result(timeout=20)
+                            total_bytes += f.result(timeout=15)
                         except Exception:
                             pass
 
@@ -511,27 +532,36 @@ def _http_speed_test_multi():
                     log(f"  {name}多线程: {dl:.2f} Mbps ({total_bytes/(1024*1024):.0f}MB/{elapsed:.1f}s)")
                     if dl > best_dl:
                         best_dl = dl
-                    break
+                        best_name = name
+                    break  # Cloudflare multi-thread is reliable, stop after first success
             else:
-                # Single-threaded with large file
+                # Single-threaded for domestic endpoints
+                log(f"  通过{name}单线程下载测试...")
                 dl_str = _single_thread_download_url(url, name)
                 if dl_str != "测速失败":
-                    best_dl = float(dl_str)
-                    break
+                    dl_val = float(dl_str)
+                    log(f"  {name}: {dl_val:.2f} Mbps")
+                    if dl_val > best_dl:
+                        best_dl = dl_val
+                        best_name = name
+                    # If we got a good result from domestic, don't bother with Cloudflare
+                    if dl_val > 5:
+                        break
         except Exception as e:
             log(f"  [WARN] {name}测速失败: {e}")
             continue
 
     if best_dl > 0:
         info["下载速率(Mbps)"] = f"{best_dl:.2f}"
+        info["测速方式"] = f"HTTP测速 ({best_name})"
     else:
         # Fallback to single-threaded
         info["下载速率(Mbps)"] = _single_thread_download_fallback()
+        info["测速方式"] = "HTTP测速(单线程)"
 
     # Upload test
     info["上传速率(Mbps)"] = _test_upload_speed()
 
-    info["测速方式"] = "多线程HTTP测速"
     info["延迟(ms)"] = "N/A"
     return info
 
@@ -557,8 +587,13 @@ def _single_thread_download_url(url, name_hint=""):
     return "测速失败"
 
 def _single_thread_download_fallback():
-    """Try multiple URLs for single-threaded download."""
+    """Try multiple URLs for single-threaded download, domestic first."""
     test_urls = [
+        # Domestic Chinese CDN endpoints (fastest for mainland users)
+        ("http://speedtest1.online.sh.cn:8080/download/?size=25000000", "中国电信上海"),
+        ("https://mirrors.tuna.tsinghua.edu.cn/ubuntu-releases/24.04/ubuntu-24.04-desktop-amd64.iso.zsync", "清华TUNA"),
+        ("https://alibaba.github.io/arthas/arthas-boot.jar", "阿里云OSS"),
+        # Global CDN fallbacks
         ("https://speed.cloudflare.com/__down?bytes=25000000", "Cloudflare"),
         ("https://proof.ovh.net/files/10Mb.dat", "OVH"),
     ]
@@ -569,27 +604,52 @@ def _single_thread_download_fallback():
     return "测速失败"
 
 def _test_upload_speed():
-    """Test upload speed by posting data to a test endpoint."""
+    """Test upload speed by posting data to test endpoints.
+
+    Tries multiple upload endpoints for reliability, with domestic-friendly options.
+    """
+    test_endpoints = [
+        # postman-echo (often has better connectivity in Asia-Pacific)
+        "https://postman-echo.com/post",
+        # httpbin (global, may be slower from China)
+        "https://httpbin.org/post",
+        # httpbin over plain HTTP (avoids TLS overhead for pure speed measurement)
+        "http://httpbin.org/post",
+    ]
+
     test_sizes = [1 * 1024 * 1024, 3 * 1024 * 1024]  # 1MB then 3MB
     best = 0
-    for size in test_sizes:
-        try:
-            test_data = b"0" * size
-            req = urllib.request.Request(
-                "https://httpbin.org/post",
-                data=test_data,
-                headers={"Content-Type": "application/octet-stream"}
-            )
-            ctx = ssl.create_default_context()
-            start = time.time()
-            urllib.request.urlopen(req, context=ctx, timeout=30)
-            elapsed = time.time() - start
-            if elapsed > 0:
-                speed = (len(test_data) * 8) / elapsed / 1_000_000
-                if speed > best:
-                    best = speed
-        except Exception:
-            continue
+
+    for endpoint in test_endpoints:
+        for size in test_sizes:
+            try:
+                test_data = b"0" * size
+                req = urllib.request.Request(
+                    endpoint,
+                    data=test_data,
+                    headers={
+                        "Content-Type": "application/octet-stream",
+                        "User-Agent": "Mozilla/5.0"
+                    }
+                )
+                ctx = ssl.create_default_context() if endpoint.startswith("https") else None
+                start = time.time()
+                if ctx:
+                    urllib.request.urlopen(req, context=ctx, timeout=20)
+                else:
+                    urllib.request.urlopen(req, timeout=20)
+                elapsed = time.time() - start
+                if elapsed > 0:
+                    speed = (len(test_data) * 8) / elapsed / 1_000_000
+                    if speed > best:
+                        best = speed
+            except Exception:
+                continue
+
+        # If we got a good result from this endpoint, no need to try others
+        if best > 1:
+            break
+
     if best > 0:
         return f"{best:.2f}"
     return "测速失败"
@@ -1306,7 +1366,7 @@ class MainApp(tk.Tk):
                 log(f"[{step_num}/6] {step_name} - 完成 ✓")
                 self._set_status(f"已完成 {step_num}/6: {step_name}")
             except Exception as e:
-                log(f"[{step_num}/7] {step_name} - 失败 ✗: {e}")
+                log(f"[{step_num}/6] {step_name} - 失败 ✗: {e}")
                 self._set_status(f"步骤{step_num}失败: {step_name}")
                 failed = True
                 if step_num == 6:

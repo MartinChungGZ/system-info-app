@@ -31,11 +31,15 @@ C:\Users\PC001\system_info_app\
 - "邮箱设置"按钮已禁用（暂不可用）
 
 ## 已知问题/改进方向
-- 网络测速speedtest-cli常选到HK/TW服务器，CN大陆服务器较少出现
-- HTTP多线程测速Cloudflare/OVH为境外CDN，国内速度可能偏低
-- 上传测速依赖httpbin.org，国内路由较慢
 - Chrome --version 在Chrome已运行时可能失败，目前用注册表替代
 - 邮件功能已禁用（邮箱设置按钮置灰），后续需要时再启用
+- macOS Intel构建(macos-13)较慢(约20-40min)，PyInstaller已优化（移除--collect-all）
+
+## 已完成的优化 (v1.1-dev)
+- ✅ **网络测速国内优化**: speedtest-cli优先CN服务器；HTTP多线程下载加入国内CDN（电信上海/清华TUNA/阿里云OSS），Cloudflare作为备选
+- ✅ **上传测速优化**: 多端点尝试（postman-echo.com → httpbin.org），避免单点失败
+- ✅ **Mac打包加速**: 移除`--collect-all openpyxl`（极度耗时），改用精确`--hidden-import`；增加timeout防止死循环
+- ✅ **Bug修复**: 采集失败日志 `step_num/7` → `step_num/6`
 
 ## 运行方式
 ```

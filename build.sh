@@ -29,7 +29,9 @@ rm -rf dist build dmg_staging
 echo ""
 echo "[3/4] 使用PyInstaller构建macOS App Bundle..."
 # --onedir on macOS creates a proper .app bundle when --windowed is set
-pyinstaller --onedir --windowed --name "系统信息采集工具_Mac" \
+# NOTE: Removed --collect-all openpyxl (extremely slow, unnecessarily collects
+# entire package). Using targeted --hidden-import instead.
+pyinstaller --noconfirm --onedir --windowed --name "系统信息采集工具_Mac" \
     --hidden-import psutil \
     --hidden-import psutil._common \
     --hidden-import psutil._psosx \
@@ -47,7 +49,6 @@ pyinstaller --onedir --windowed --name "系统信息采集工具_Mac" \
     --hidden-import email.encoders \
     --hidden-import urllib.request \
     --hidden-import xml.etree.ElementTree \
-    --collect-all openpyxl \
     system_info_app.py
 
 if [ $? -ne 0 ]; then
