@@ -1,0 +1,35 @@
+name: 跨平台构建
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:  # 允许手动触发
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt pyinstaller
+      - run: pyinstaller --onefile --windowed --name "系统信息采集工具" --hidden-import psutil --hidden-import psutil._common --hidden-import psutil._pswindows --hidden-import openpyxl --hidden-import openpyxl.styles --hidden-import speedtest --hidden-import speedtest_cli --hidden-import smtplib --hidden-import ssl --hidden-import json --hidden-import email.mime.multipart --hidden-import email.mime.base --hidden-import email.mime.text --hidden-import email.encoders --hidden-import urllib.request --hidden-import xml.etree.ElementTree --collect-all openpyxl system_info_app.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Windows版-系统信息采集工具
+          path: dist/系统信息采集工具.exe
+
+  build-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip3 install -r requirements.txt pyinstaller
+      - run: pyinstaller --onefile --windowed --name "系统信息采集工具_Mac" --hidden-import psutil --hidden-import psutil._common --hidden-import psutil._psosx --hidden-import psutil._psposix --hidden-import openpyxl --hidden-import openpyxl.styles --hidden-import speedtest --hidden-import speedtest_cli --hidden-import smtplib --hidden-import ssl --hidden-import json --hidden-import email.mime.multipart --hidden-import email.mime.base --hidden-import email.mime.text --hidden-import email.encoders --hidden-import urllib.request --hidden-import xml.etree.ElementTree --collect-all openpyxl system_info_app.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Mac版-系统信息采集工具
+          path: dist/系统信息采集工具_Mac

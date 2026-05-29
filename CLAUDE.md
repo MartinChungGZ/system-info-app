@@ -1,0 +1,54 @@
+# 系统信息采集工具 (System Info Collection Tool)
+
+## 项目概述
+跨平台桌面应用（Windows/macOS），用于采集电脑系统信息、网络测速、浏览器版本，
+生成Excel报表并通过邮件发送。使用Python tkinter + PyInstaller打包为免安装独立exe。
+
+## 项目目录
+```
+C:\Users\PC001\system_info_app\
+  system_info_app.py    # 主程序 (~880行)，包含GUI + 所有采集逻辑
+  run_headless.py        # 无头测试脚本（CLI模式运行采集+生成Excel）
+  requirements.txt       # Python依赖
+  build.bat / build.sh   # PyInstaller打包脚本 (Windows/Mac)
+  config.json            # 运行时生成，存储邮箱SMTP配置
+  config_template.json   # 邮箱配置模板参考
+```
+
+## 核心功能模块 (system_info_app.py)
+- `get_cpu_info()` → 注册表/wmic/sysctl获取CPU，`_parse_cpu_brand()` 提取品牌名
+- `get_memory_info()` → psutil获取物理内存
+- `get_network_speed()` → speedtest-cli(优先) + 多线程HTTP下载验证
+- `_get_chrome_version()` → 注册表Uninstall键 + LOCALAPPDATA路径
+- `_get_firefox_version()` → 注册表/文件路径/--version命令
+- `create_excel()` → 生成简单二维表Excel（项目/值 两列）
+- `send_email()` → SMTP/SSL发送，收件人 zhongwenjian@zy.com
+
+## GUI界面
+- 所属校区下拉框：初四越秀/梅花园/海珠/天河 + 高四公园前/海珠/梅花园/花都 + 中高复中台
+- 姓名文本框：100字符限制，中英文
+- "开始搜集"按钮 → 后台线程依次采集(共6步) → Excel（保存到桌面）
+- "邮箱设置"按钮已禁用（暂不可用）
+
+## 已知问题/改进方向
+- 网络测速speedtest-cli常选到HK/TW服务器，CN大陆服务器较少出现
+- HTTP多线程测速Cloudflare/OVH为境外CDN，国内速度可能偏低
+- 上传测速依赖httpbin.org，国内路由较慢
+- Chrome --version 在Chrome已运行时可能失败，目前用注册表替代
+- 邮件功能已禁用（邮箱设置按钮置灰），后续需要时再启用
+
+## 运行方式
+```
+# 开发模式
+pip install -r requirements.txt
+python system_info_app.py
+
+# 打包为独立exe（免安装）
+build.bat    # Windows → dist/系统信息采集工具.exe
+./build.sh   # macOS   → dist/系统信息采集工具
+```
+
+## 用户偏好
+- 返回结果使用简洁表格格式
+- Excel格式偏好简单二维表（便于后续数据统计）
+- 不主动发邮件，需确认后再发送
