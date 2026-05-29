@@ -15,7 +15,7 @@ if ! command -v python3 &> /dev/null; then
     exit 1
 fi
 
-echo "[1/3] 安装依赖包..."
+echo "[1/4] 安装依赖包..."
 pip3 install -r requirements.txt
 if [ $? -ne 0 ]; then
     echo "[错误] 依赖安装失败"
@@ -23,12 +23,13 @@ if [ $? -ne 0 ]; then
 fi
 
 echo ""
-echo "[2/3] 清理旧的构建文件..."
-rm -rf dist build
+echo "[2/4] 清理旧的构建文件..."
+rm -rf dist build dmg_staging
 
 echo ""
-echo "[3/3] 使用PyInstaller打包为独立应用..."
-pyinstaller --onefile --windowed --name "系统信息采集工具_Mac" \
+echo "[3/4] 使用PyInstaller构建macOS App Bundle..."
+# --onedir on macOS creates a proper .app bundle when --windowed is set
+pyinstaller --onedir --windowed --name "系统信息采集工具_Mac" \
     --hidden-import psutil \
     --hidden-import psutil._common \
     --hidden-import psutil._psosx \
@@ -49,29 +50,34 @@ pyinstaller --onefile --windowed --name "系统信息采集工具_Mac" \
     --collect-all openpyxl \
     system_info_app.py
 
-if [ $? -eq 0 ]; then
-    echo ""
-    echo "[4/4] 创建DMG磁盘映像..."
-    # Prepare DMG staging directory
-    rm -rf dmg_staging
-    mkdir -p dmg_staging
-    cp "dist/系统信息采集工具_Mac" dmg_staging/
-
-    # Create DMG
-    DMG_NAME="dist/系统信息采集工具_Mac.dmg"
-    hdiutil create -volname "系统信息采集工具" \
-        -srcfolder dmg_staging \
-        -ov -format UDZO \
-        "$DMG_NAME"
-    rm -rf dmg_staging
-
-    echo ""
-    echo "============================================"
-    echo "  打包完成！"
-    echo "  DMG文件: $DMG_NAME"
-    echo "  将DMG发给Mac用户，双击挂载后拖入Applications即可"
-    echo "============================================"
-else
+if [ $? -ne 0 ]; then
     echo "[错误] PyInstaller打包失败"
     exit 1
 fi
+
+echo ""
+echo "[4/4] 创建专业DMG安装映像..."
+
+# Prepare DMG staging
+mkdir -p dmg_staging
+cp -R "dist/系统信息采集工具_Mac.app" dmg_staging/
+
+# Create Applications symlink for drag-to-install UX
+ln -s /Applications dmg_staging/Applications
+
+# Create DMG
+DMG_NAME="dist/系统信息采集工具_Mac.dmg"
+hdiutil create -volname "系统信息采集工具" \
+    -srcfolder dmg_staging \
+    -ov -format UDZO \
+    -fs HFS+ \
+    "$DMG_NAME"
+
+rm -rf dmg_staging
+
+echo ""
+echo "============================================"
+echo "  打包完成！"
+echo "  DMG: $DMG_NAME"
+echo "  Mac用户操作：双击DMG → 拖App到Applications → 完成"
+echo "============================================"

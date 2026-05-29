@@ -28,12 +28,13 @@ jobs:
         with:
           python-version: "3.11"
       - run: pip3 install -r requirements.txt pyinstaller
-      - run: pyinstaller --onefile --windowed --name "系统信息采集工具_Mac" --hidden-import psutil --hidden-import psutil._common --hidden-import psutil._psosx --hidden-import psutil._psposix --hidden-import openpyxl --hidden-import openpyxl.styles --hidden-import speedtest --hidden-import speedtest_cli --hidden-import smtplib --hidden-import ssl --hidden-import json --hidden-import email.mime.multipart --hidden-import email.mime.base --hidden-import email.mime.text --hidden-import email.encoders --hidden-import urllib.request --hidden-import xml.etree.ElementTree --collect-all openpyxl system_info_app.py
-      - name: 创建DMG
+      - run: pyinstaller --onedir --windowed --name "系统信息采集工具_Mac" --hidden-import psutil --hidden-import psutil._common --hidden-import psutil._psosx --hidden-import psutil._psposix --hidden-import openpyxl --hidden-import openpyxl.styles --hidden-import speedtest --hidden-import speedtest_cli --hidden-import smtplib --hidden-import ssl --hidden-import json --hidden-import email.mime.multipart --hidden-import email.mime.base --hidden-import email.mime.text --hidden-import email.encoders --hidden-import urllib.request --hidden-import xml.etree.ElementTree --collect-all openpyxl system_info_app.py
+      - name: 创建专业DMG（含App Bundle + Applications快捷方式）
         run: |
           mkdir dmg_staging
-          cp dist/系统信息采集工具_Mac dmg_staging/
-          hdiutil create -volname "系统信息采集工具" -srcfolder dmg_staging -ov -format UDZO dist/系统信息采集工具_Mac.dmg
+          cp -R dist/系统信息采集工具_Mac.app dmg_staging/
+          ln -s /Applications dmg_staging/Applications
+          hdiutil create -volname "系统信息采集工具" -srcfolder dmg_staging -ov -format UDZO -fs HFS+ dist/系统信息采集工具_Mac.dmg
       - uses: actions/upload-artifact@v4
         with:
           name: Mac版-系统信息采集工具

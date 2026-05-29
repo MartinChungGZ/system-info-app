@@ -50,7 +50,7 @@ build.bat    # Windows → dist/系统信息采集工具.exe
 
 ## 分发说明
 - Windows: 双击 `系统信息采集工具.exe` 即可运行（SmartScreen 可能提示，点击"更多信息→仍要运行"）
-- macOS: 首次需**右键→打开** `系统信息采集工具_Mac`（Gatekeeper 提示"来自身份不明开发者"，确认打开即可，只需操作一次）
+- macOS: 分发格式为 `.dmg` 映像。用户双击挂载 → 将 `系统信息采集工具_Mac.app` 拖入 Applications 文件夹 → 首次启动时**右键 app → 打开**（Gatekeeper 验证，仅一次）。后续可直接双击运行
 - 无需管理员权限、无需安装 Python 或任何依赖
 
 ## 用户偏好
