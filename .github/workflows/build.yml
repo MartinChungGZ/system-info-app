@@ -40,25 +40,23 @@ jobs:
           name: Windows版-系统信息采集工具
           path: dist/系统信息采集工具.exe
 
-  # ── Mac build on Apple Silicon, cross-compile to x86_64 for universal compatibility ──
-  # Apple Silicon Macs have universal2 Python; arch -x86_64 forces Intel mode
-  # Produces Intel binary that runs on ALL Macs (Apple Silicon via built-in Rosetta 2)
+  # ── Mac build: Intel binary (works on ALL Macs including Apple Silicon via Rosetta 2) ──
+  # 为什么用 macos-13 而不用 macos-latest：
+  #   macos-latest 是ARM runner，setup-python安装的是ARM Python
+  #   无法用 arch -x86_64 交叉编译（需要universal2 Python，CI不可靠）
+  #   macos-13 原生Intel编译，产物通吃所有Mac（含Apple Silicon通过Rosetta2）
+  # 之前1h18min卡死是 --collect-all openpyxl 导致（已移除），现在约15-25min
   build-macos:
-    runs-on: macos-latest
-    timeout-minutes: 15
+    runs-on: macos-13
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: python3 -c "import platform; print(f'Native arch: {platform.machine()}')"
-      - name: 安装依赖 (x86_64 Intel 模式，兼容所有Mac)
-        run: |
-          arch -x86_64 python3 -m pip install --upgrade pip
-          arch -x86_64 python3 -m pip install -r requirements.txt pyinstaller
-      - name: PyInstaller打包 (x86_64 Intel 二进制)
-        run: >
-          arch -x86_64 python3 -m PyInstaller --noconfirm --onedir --windowed
+      - run: pip3 install -r requirements.txt pyinstaller
+      - run: >
+          pyinstaller --noconfirm --onedir --windowed
           --name "系统信息采集工具_Mac"
           --hidden-import psutil
           --hidden-import psutil._common
@@ -78,9 +76,6 @@ jobs:
           --hidden-import urllib.request
           --hidden-import xml.etree.ElementTree
           system_info_app.py
-      - name: 验证二进制架构 (应为x86_64)
-        run: |
-          file dist/系统信息采集工具_Mac.app/Contents/MacOS/系统信息采集工具_Mac
       - name: 创建专业DMG（含App Bundle + Applications快捷方式）
         run: |
           mkdir dmg_staging

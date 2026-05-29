@@ -1,31 +1,14 @@
 #!/bin/bash
 # ============================================
 #   系统信息采集工具 - macOS 打包脚本
-#   产出: Intel x86_64 .app (通吃所有Mac)
-#   策略: Apple Silicon Mac 通过 Rosetta2 交叉编译为 Intel
+#   产出: Intel x86_64 .app → DMG (通吃所有Mac)
+#   Intel Mac: 直接构建 | Apple Silicon: 通过 Rosetta 2 自动转译运行
 # ============================================
 
 echo "============================================"
 echo "  系统信息采集工具 - macOS 打包脚本"
 echo "============================================"
 echo ""
-
-# ── Detect architecture & set up cross-compilation if needed ──
-ARCH=$(uname -m)
-PYTHON_CMD="python3"
-PIP_CMD="pip3"
-PYINSTALLER_CMD="pyinstaller"
-
-if [ "$ARCH" = "arm64" ]; then
-    echo "[INFO] 检测到 Apple Silicon (arm64) Mac"
-    echo "[INFO] 将通过 Rosetta 2 交叉编译为 Intel x86_64 二进制"
-    echo "[INFO] (Intel 二进制可在所有 Mac 上运行，Apple Silicon 通过 Rosetta 2 自动转译)"
-    PYTHON_CMD="arch -x86_64 python3"
-    PIP_CMD="arch -x86_64 pip3"
-    PYINSTALLER_CMD="arch -x86_64 python3 -m PyInstaller"
-else
-    echo "[INFO] 检测到 Intel (x86_64) Mac，直接编译"
-fi
 
 # Check Python
 if ! command -v python3 &> /dev/null; then
@@ -35,7 +18,7 @@ if ! command -v python3 &> /dev/null; then
 fi
 
 echo "[1/4] 安装依赖包..."
-eval "$PIP_CMD install -r requirements.txt"
+pip3 install -r requirements.txt
 if [ $? -ne 0 ]; then
     echo "[错误] 依赖安装失败"
     exit 1
@@ -46,9 +29,9 @@ echo "[2/4] 清理旧的构建文件..."
 rm -rf dist build dmg_staging
 
 echo ""
-echo "[3/4] 使用PyInstaller构建macOS App Bundle (x86_64)..."
+echo "[3/4] 使用PyInstaller构建macOS App Bundle..."
 # --onedir on macOS creates a proper .app bundle when --windowed is set
-eval "$PYINSTALLER_CMD --noconfirm --onedir --windowed --name \"系统信息采集工具_Mac\" \
+pyinstaller --noconfirm --onedir --windowed --name "系统信息采集工具_Mac" \
     --hidden-import psutil \
     --hidden-import psutil._common \
     --hidden-import psutil._psosx \
@@ -66,7 +49,7 @@ eval "$PYINSTALLER_CMD --noconfirm --onedir --windowed --name \"系统信息采�
     --hidden-import email.encoders \
     --hidden-import urllib.request \
     --hidden-import xml.etree.ElementTree \
-    system_info_app.py"
+    system_info_app.py
 
 if [ $? -ne 0 ]; then
     echo "[错误] PyInstaller打包失败"

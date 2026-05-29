@@ -33,7 +33,7 @@ C:\Users\PC001\system_info_app\
 ## 已知问题/改进方向
 - Chrome --version 在Chrome已运行时可能失败，目前用注册表替代
 - 邮件功能已禁用（邮箱设置按钮置灰），后续需要时再启用
-- CI: Mac构建用macos-latest(Apple Silicon) + arch -x86_64交叉编译Intel二进制(~5min)，产物通吃所有Mac
+- CI: Mac用macos-13 Intel原生编译(~15-25min)，产物Intel .app通吃所有Mac（含Apple Silicon通过Rosetta2）
 
 ## 已完成的优化 (v1.1-dev)
 - ✅ **网络测速国内优化**: speedtest-cli优先CN服务器；HTTP多线程下载加入国内CDN（电信上海/清华TUNA/阿里云OSS），Cloudflare作为备选
