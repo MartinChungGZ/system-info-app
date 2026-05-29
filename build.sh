@@ -51,11 +51,27 @@ pyinstaller --onefile --windowed --name "系统信息采集工具_Mac" \
 
 if [ $? -eq 0 ]; then
     echo ""
+    echo "[4/4] 创建DMG磁盘映像..."
+    # Prepare DMG staging directory
+    rm -rf dmg_staging
+    mkdir -p dmg_staging
+    cp "dist/系统信息采集工具_Mac" dmg_staging/
+
+    # Create DMG
+    DMG_NAME="dist/系统信息采集工具_Mac.dmg"
+    hdiutil create -volname "系统信息采集工具" \
+        -srcfolder dmg_staging \
+        -ov -format UDZO \
+        "$DMG_NAME"
+    rm -rf dmg_staging
+
+    echo ""
     echo "============================================"
     echo "  打包完成！"
-    echo "  可执行文件位置: dist/系统信息采集工具_Mac"
-    echo "  将该文件复制到任意Mac电脑双击即可运行"
+    echo "  DMG文件: $DMG_NAME"
+    echo "  将DMG发给Mac用户，双击挂载后拖入Applications即可"
     echo "============================================"
 else
-    echo "[错误] 打包失败"
+    echo "[错误] PyInstaller打包失败"
+    exit 1
 fi
