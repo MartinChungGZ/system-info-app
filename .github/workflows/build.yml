@@ -21,7 +21,7 @@ jobs:
           path: dist/系统信息采集工具.exe
 
   build-macos:
-    runs-on: macos-latest
+    runs-on: macos-13
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
